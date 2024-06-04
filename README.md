@@ -54,24 +54,24 @@ The project comprises several Python  functions, each serving a specific purpose
 This function retrieves details about a YouTube channel, including its name, ID, subscriber count, view count, playlist ID, description, and total video count.
 
 
-def get_channel_details(channel_id):
-response=youtube.channels().list(
-id=channel_id,
-part="snippet,statistics,contentDetails")
-
-channel_data=response.execute()
-channel_details=[]
-
-for i in channel_data["items"]:
-data=dict(channel_name=i["snippet"]["title"],
-channel_id=i["id"],
-subscriber=i["statistics"]["subscriberCount"],
-views = i ["statistics"] ["viewCount"],
-playlist_id=i["contentDetails"]["relatedPlaylists"]["uploads"],
-channel_Description=i["snippet"]["description"],
-Total_video=i["statistics"]["videoCount"])
-channel_details.append(data)
-return channel_details
+	def get_channel_details(channel_id):
+	response=youtube.channels().list(
+	id=channel_id,
+	part="snippet,statistics,contentDetails")
+	
+	channel_data=response.execute()
+	channel_details=[]
+	
+	for i in channel_data["items"]:
+	data=dict(channel_name=i["snippet"]["title"],
+	channel_id=i["id"],
+	subscriber=i["statistics"]["subscriberCount"],
+	views = i ["statistics"] ["viewCount"],
+	playlist_id=i["contentDetails"]["relatedPlaylists"]["uploads"],
+	channel_Description=i["snippet"]["description"],
+	Total_video=i["statistics"]["videoCount"])
+	channel_details.append(data)
+	return channel_details
 
 # Get Video Ids
 
