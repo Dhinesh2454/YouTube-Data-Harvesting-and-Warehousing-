@@ -76,121 +76,122 @@ This function retrieves details about a YouTube channel, including its name, ID,
 # Get Video Ids
 
 This function fetches the Ids of all videos uploaded to a specified channel.
+
 	def get_video_id(channel_id):
-	    videos_ids=[]
-	    response=youtube.channels().list(
-	    id=channel_id,
-	    part="contentDetails").execute()
-	    playlist_id=response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
-	    
-	    next_page_token = None
-	    while True:
-	    request=youtube.playlistItems().list(part="snippet",
-	    playlistId=playlist_id,
-	    maxResults=50,
-	    pageToken=next_page_token).execute()
-	    for i in range(len(request["items"])):
-	    videos_ids.append(request["items"][i]["snippet"][ 'resourceId']['videoId'])
-	    next_page_token=request.get("nextPageToken")
-	    
-	    if next_page_token is None:
-	    break
-	    return videos_ids
+	videos_ids=[]
+	response=youtube.channels().list(
+	id=channel_id,
+	part="contentDetails").execute()
+	playlist_id=response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+	
+	next_page_token = None
+	while True:
+	request=youtube.playlistItems().list(part="snippet",
+	playlistId=playlist_id,
+	maxResults=50,
+	pageToken=next_page_token).execute()
+	for i in range(len(request["items"])):
+	videos_ids.append(request["items"][i]["snippet"][ 'resourceId']['videoId'])
+	next_page_token=request.get("nextPageToken")
+	
+	if next_page_token is None:
+	break
+	return videos_ids
 
 # Get Video Information
 
 Given a list of video IDs, this function collects information about each video, such as its title, description, thumbnail URL, tags, publication date, duration, views, likes, comments, favorite count, definition, and caption status.
 
-def get_video_info(video_Ids):
-    video_data=[]
-    
-    for video_id in video_Ids:
-    request=youtube.videos().list(
-    part="snippet,contentDetails,statistics",
-    id=video_id
-    )
-    response=request.execute()
-    
-    for item in response["items"]:
-    data=dict(channel_name=item["snippet"][ 'channelTitle'],
-    channel_id=item['snippet'][ 'channelId'],
-    Video_Id=item["id"],
-    Title = item["snippet"]["title"],
-    Description=item["snippet"].get('description'),
-    Thumbnail=item['snippet']['thumbnails']['default']['url'],
-    Tags=item["snippet"].get("tags"),
-    Published_date=item[ 'snippet']['publishedAt'],
-    Duration=item['contentDetails']['duration'],
-    Views=item['statistics'].get('viewCount'),
-    Likes=item['statistics'].get('likeCount'),
-    Comments=item['statistics'].get('commentCount'),
-    Favorite_Count=item['statistics']['favoriteCount'],
-    Definition=item[ 'contentDetails'][ 'definition'],
-    Caption_status=item["contentDetails"]["caption"]
-    
-    
-    )
-    video_data.append(data)
-    return video_data
+	def get_video_info(video_Ids):
+	video_data=[]
+	
+	for video_id in video_Ids:
+	request=youtube.videos().list(
+	part="snippet,contentDetails,statistics",
+	id=video_id
+	)
+	response=request.execute()
+	
+	for item in response["items"]:
+	data=dict(channel_name=item["snippet"][ 'channelTitle'],
+	channel_id=item['snippet'][ 'channelId'],
+	Video_Id=item["id"],
+	Title = item["snippet"]["title"],
+	Description=item["snippet"].get('description'),
+	Thumbnail=item['snippet']['thumbnails']['default']['url'],
+	Tags=item["snippet"].get("tags"),
+	Published_date=item[ 'snippet']['publishedAt'],
+	Duration=item['contentDetails']['duration'],
+	Views=item['statistics'].get('viewCount'),
+	Likes=item['statistics'].get('likeCount'),
+	Comments=item['statistics'].get('commentCount'),
+	Favorite_Count=item['statistics']['favoriteCount'],
+	Definition=item[ 'contentDetails'][ 'definition'],
+	Caption_status=item["contentDetails"]["caption"]
+	
+	
+	)
+	video_data.append(data)
+	return video_data
     
 # Get Comment Information
 
 For a list of video IDs, this function retrieves details of comments made on each video, including comment ID, video ID, comment text, author name, and publication date.
 
-def get_comment_info(video_Ids):
-    comment_info=[]
-    try:
-    for video_id in video_Ids:
-    comment_request=youtube.commentThreads().list(
-    part="snippet",
-    videoId= video_id,
-    maxResults=100
-    )
-    comment_response=comment_request.execute()
-    
-    for item in comment_response["items"]:
-    comment_data=dict(comment_id=item['snippet']['topLevelComment'][ 'id'],
-    Video_Id=item['snippet']['topLevelComment'][ 'snippet']['videoId'],
-    comment_Text=item['snippet']['topLevelComment'][ 'snippet'][ 'textDisplay'],
-    comment_author=item['snippet']['topLevelComment'][ 'snippet']['authorDisplayName'],
-    comment_PublishedAt=item[ 'snippet'][ 'topLevelComment'][ 'snippet']['publishedAt']
-    )
-    comment_info.append(comment_data)
-    except:
-    pass
-    return comment_info
+	def get_comment_info(video_Ids):
+	comment_info=[]
+	try:
+	for video_id in video_Ids:
+	comment_request=youtube.commentThreads().list(
+	part="snippet",
+	videoId= video_id,
+	maxResults=100
+	)
+	comment_response=comment_request.execute()
+	
+	for item in comment_response["items"]:
+	comment_data=dict(comment_id=item['snippet']['topLevelComment'][ 'id'],
+	Video_Id=item['snippet']['topLevelComment'][ 'snippet']['videoId'],
+	comment_Text=item['snippet']['topLevelComment'][ 'snippet'][ 'textDisplay'],
+	comment_author=item['snippet']['topLevelComment'][ 'snippet']['authorDisplayName'],
+	comment_PublishedAt=item[ 'snippet'][ 'topLevelComment'][ 'snippet']['publishedAt']
+	)
+	comment_info.append(comment_data)
+	except:
+	pass
+	return comment_info
 
 # Get Playlist Information
 
 This function gathers information about playlists associated with a given channel, including playlist ID, channel ID, title, channel name, publication date, and video count.
 
-def get_Playlist_info(channel_id):
-    playlist_data=[]
-    
-    next_page_Token= None
-    request=youtube.playlists().list(
-    part='snippet,contentDetails',
-    channelId=channel_id,
-    maxResults=50,
-    pageToken=next_page_Token
-    
-    )
-    while True:
-    response=request.execute()
-    
-    for item in response["items"]:
-    data=dict(playlist_Id=item["id"],
-    channel_Id=item['snippet']['channelId'],
-    Title=item['snippet'][ 'title'],
-    channel_Name=item[ 'snippet']['channelTitle'],
-    PublishedAt=item['snippet']['publishedAt'],
-    video_count=item[ 'contentDetails']['itemCount'])
-    playlist_data.append(data)
-    next_page_Token=response.get("nextPageToken")
-    
-    if next_page_Token is None:
-    break
-    return playlist_data
+	def get_Playlist_info(channel_id):
+	playlist_data=[]
+	
+	next_page_Token= None
+	request=youtube.playlists().list(
+	part='snippet,contentDetails',
+	channelId=channel_id,
+	maxResults=50,
+	pageToken=next_page_Token
+	
+	)
+	while True:
+	response=request.execute()
+	
+	for item in response["items"]:
+	data=dict(playlist_Id=item["id"],
+	channel_Id=item['snippet']['channelId'],
+	Title=item['snippet'][ 'title'],
+	channel_Name=item[ 'snippet']['channelTitle'],
+	PublishedAt=item['snippet']['publishedAt'],
+	video_count=item[ 'contentDetails']['itemCount'])
+	playlist_data.append(data)
+	next_page_Token=response.get("nextPageToken")
+	
+	if next_page_Token is None:
+	break
+	return playlist_data
     
 # Technologies Used
 •	Python: Programming language used for scripting.
