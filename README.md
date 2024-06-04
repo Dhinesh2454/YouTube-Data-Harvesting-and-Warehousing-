@@ -42,7 +42,7 @@ This will start the Streamlit server, and you can access the dashboard in your w
 •	Configuration: Users need to set up a MySQL database and update the config.py file with the database credentials.
 # Data Analysis
 •	Queries: Provides various SQL queries to analyze the stored data, such as finding the most viewed videos, channels with     the highest number of videos, average video duration per channel and more.
-•	Visualization: Uses interactive visualizations like bar charts to display query results, enhancing data understanding       for users.
+•	Visualization: Uses interactive visualizations like bar charts to display query results, enhancing data understanding  for users.
 # Dependencies
 •	Python Packages: Required Python packages are installed using pip, including Pandas for data manipulation, Google API Client Library for interacting with YouTube Data API, MySQL Connector for communication with MySQL database, Streamlit for building the dashboard, and Matplotlib for creating visualizations.
 
@@ -52,49 +52,48 @@ The project comprises several Python  functions, each serving a specific purpose
 # Get  Channnel  Detail
 
 This function retrieves details about a YouTube channel, including its name, ID, subscriber count, view count, playlist ID, description, and total video count.
-
-def get_channel_details(channel_id):
-    response=youtube.channels().list(
-    id=channel_id,
-    part="snippet,statistics,contentDetails")
-    
-    channel_data=response.execute()
-    channel_details=[]
-    
-    for i in channel_data["items"]:
-    data=dict(channel_name=i["snippet"]["title"],
-    channel_id=i["id"],
-    subscriber=i["statistics"]["subscriberCount"],
-    views = i ["statistics"] ["viewCount"],
-    playlist_id=i["contentDetails"]["relatedPlaylists"]["uploads"],
-    channel_Description=i["snippet"]["description"],
-    Total_video=i["statistics"]["videoCount"])
-    channel_details.append(data)
-    return channel_details
+	def get_channel_details(channel_id):
+	    response=youtube.channels().list(
+	    id=channel_id,
+	    part="snippet,statistics,contentDetails")
+	    
+	    channel_data=response.execute()
+	    channel_details=[]
+	    
+	    for i in channel_data["items"]:
+	    data=dict(channel_name=i["snippet"]["title"],
+	    channel_id=i["id"],
+	    subscriber=i["statistics"]["subscriberCount"],
+	    views = i ["statistics"] ["viewCount"],
+	    playlist_id=i["contentDetails"]["relatedPlaylists"]["uploads"],
+	    channel_Description=i["snippet"]["description"],
+	    Total_video=i["statistics"]["videoCount"])
+	    channel_details.append(data)
+	    return channel_details
 
 # Get Video Ids
 
 This function fetches the Ids of all videos uploaded to a specified channel.
-def get_video_id(channel_id):
-    videos_ids=[]
-    response=youtube.channels().list(
-    id=channel_id,
-    part="contentDetails").execute()
-    playlist_id=response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
-    
-    next_page_token = None
-    while True:
-    request=youtube.playlistItems().list(part="snippet",
-    playlistId=playlist_id,
-    maxResults=50,
-    pageToken=next_page_token).execute()
-    for i in range(len(request["items"])):
-    videos_ids.append(request["items"][i]["snippet"][ 'resourceId']['videoId'])
-    next_page_token=request.get("nextPageToken")
-    
-    if next_page_token is None:
-    break
-    return videos_ids
+	def get_video_id(channel_id):
+	    videos_ids=[]
+	    response=youtube.channels().list(
+	    id=channel_id,
+	    part="contentDetails").execute()
+	    playlist_id=response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+	    
+	    next_page_token = None
+	    while True:
+	    request=youtube.playlistItems().list(part="snippet",
+	    playlistId=playlist_id,
+	    maxResults=50,
+	    pageToken=next_page_token).execute()
+	    for i in range(len(request["items"])):
+	    videos_ids.append(request["items"][i]["snippet"][ 'resourceId']['videoId'])
+	    next_page_token=request.get("nextPageToken")
+	    
+	    if next_page_token is None:
+	    break
+	    return videos_ids
 
 # Get Video Information
 
