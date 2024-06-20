@@ -5,6 +5,8 @@ from datetime import datetime
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
+
 
 
 # Function of Youtube API Connection 
@@ -19,38 +21,9 @@ youtube
 #  Streamlit Application input code 
 st.title(":rainbow[ YOUTUBE DATA HARVESTING AND WAREHOUSING]")
 channel_id = st.text_input("ENTER YOUR CHANNEL ID")
-
-# Function of Connect to MySQL Database
-mydb = mysql.connector.connect(host="127.0.0.1",
-                                user="root",
-                                password="Dhinesh@2454",
-                                database="YoutubeDataBase",
-                                auth_plugin="mysql_native_password")
-
-cursor = mydb.cursor()
-
-# Select the 10 Diffrent channel id
-Channel_Ids = st.selectbox("Select a Channel Name", (
-     "Open the Select Menu",
-    "1.Doctor Arunkumar",
-    "2.Streamlit",
-    "3.Tech Classes",
-    "4.Auto Kaaran",
-    "5.Explore India",
-))
-
-if Channel_Ids == "1.Doctor Arunkumar":
-    channel_id = "UCjZC9-Ym0UNMxqgcDX4Q0dg"
-elif Channel_Ids == "2.Streamlit":
-    channel_id = "UC3LD42rjj-Owtxsa6PwGU5Q"
-elif Channel_Ids == "3.Tech Classes":
-    channel_id = "UCPvDKIsrjA_h3g5yZJwCIHA"
-elif Channel_Ids == "4.Auto Kaaran":
-    channel_id = "UCOKNHJ1y3iiHjvI-FZLiT5g"
-elif Channel_Ids == "5.Explore India":
-    channel_id = "UCiPpjfWaWpSibmc8Y_JgSPQ"
-
-
+if st.button("Submit"):
+     st.text("Processing...")
+        
 # function of get Channel data
 def get_channel_details(channel_id):
     response=youtube.channels().list(
@@ -69,13 +42,7 @@ def get_channel_details(channel_id):
                          channel_Description=i["snippet"]["description"],
                          Total_video=i["statistics"]["videoCount"])
         channel_details.append(data)
-    return channel_details
-
-if channel_id:
-      channel_details=get_channel_details(channel_id)
-      df=pd.DataFrame(channel_details)
-
-      
+    return channel_details    
 
 #function of get video_id
 def get_video_id(channel_id):
@@ -100,14 +67,13 @@ def get_video_id(channel_id):
         if next_page_token is None:
             break
     return videos_ids
-if channel_id:
-    video_Ids=get_video_id(channel_id)
-       
-  
 
+     
+  
 #Funtion get_video_information
 def get_video_info(video_Ids):
         video_data=[]
+        video_Ids=get_video_id(channel_id) 
 
         for video_id in video_Ids:
                 request=youtube.videos().list(
@@ -138,10 +104,7 @@ def get_video_info(video_Ids):
                         video_data.append(data)
         return video_data
 
-if  channel_id:
-    video_details=get_video_info(video_Ids)
-    df2=pd.DataFrame(video_details)
-     
+
 # Function of get comment Details
 def get_comment_info(video_Ids):
 
@@ -168,10 +131,7 @@ def get_comment_info(video_Ids):
                         pass
         return comment_info
                
-if channel_id:
-        comment_Details=get_comment_info(video_Ids)
-        df3=pd.DataFrame(comment_Details)
-    
+   
 
 # Funtion of get_Playlist_details
 
@@ -202,150 +162,152 @@ def get_Playlist_info(channel_id):
         if next_page_Token is None:
             break
     return playlist_data
-if channel_id:
-    Playlist_Details=get_Playlist_info(channel_id)
-    df1=pd.DataFrame(Playlist_Details)
 
 
-# function of input query
-def channel_info(channel_id):
-    cha_det=get_channel_details(channel_id)
-    play_inf=get_Playlist_info(channel_id)
-    vi_id=get_video_id(channel_id)
-    comm_info=get_comment_info( vi_id)
-    vid_inf=get_video_info(vi_id)
+# function to call all extracted channel data insert to my sql database
+def channel_table(cha_det):
+    # Connect to MySQL
+    mydb = mysql.connector.connect(
+        host="127.0.0.1",
+        user="root",
+        password="Dhinesh@2454",
+        database="YoutubeDataBase",
+        auth_plugin="mysql_native_password"
+    )
+    
+    cursor = mydb.cursor()
 
-    return "uploaded succesfully"
-if channel_id:
-    insert=channel_info(channel_id)
-    print(insert)
-
-
-#Function of channel table creation
-def channel_table(df):
-#Connect to MYSQL
-    mydb=mysql.connector.connect(host="127.0.0.1",
-                                user="root",
-                                password="Dhinesh@2454",
-                                database="YoutubeDataBase",
-                                auth_plugin="mysql_native_password")
-
-    cursor=mydb.cursor()
-
-    # function of table creation query
-    create_table = """CREATE TABLE IF NOT EXISTS Channels (
+    # Create table if not exists
+    create_table = """
+    CREATE TABLE IF NOT EXISTS Channels (
         channel_name VARCHAR(255) PRIMARY KEY,
         channel_id VARCHAR(255),
         subscriber INT,
         views INT,
         playlist_id VARCHAR(255),
         channel_Description TEXT,
-        Total_video INT);"""
-
+        Total_video INT
+    );
+    """
     cursor.execute(create_table)
     mydb.commit()
 
-    # function of MSQL insert query
-    if channel_id:
-        values=[]
-        for index ,row in df.iterrows():
-            insert_query= """INSERT INTO Channels (
-                                                    channel_name,
-                                                    channel_id,
-                                                    subscriber,
-                                                    views,
-                                                    playlist_id,
-                                                    channel_Description,
-                                                    Total_video) 
-                                                    VALUES (%s ,%s ,%s ,%s ,%s ,%s ,%s)
-                                                    );"""
-            row_values= (
-                row["channel_name"],
-                row["channel_id"],
-                row["subscriber"],
-                row["views"],
-                row["playlist_id"],
-                row["channel_Description"],
-                row["Total_video"]
-                )
-            values.append(row_values)
-            
+    # channel detail is coverted into DataFram
+    df=pd.DataFrame(cha_det)
+
+    # Insert data into the table
+    for index, row in df.iterrows():
+        insert_query = """
+        INSERT INTO Channels (
+            channel_name,
+            channel_id,
+            subscriber,
+            views,
+            playlist_id,
+            channel_Description,
+            Total_video
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s);
+        """
+        row_values = (
+            row["channel_name"],
+            row["channel_id"],
+            row["subscriber"],
+            row["views"],
+            row["playlist_id"],
+            row["channel_Description"],
+            row["Total_video"]
+        )
+        
         try:
-            cursor.executemany(insert_query, values)
+            cursor.execute(insert_query, row_values)
             mydb.commit()
-        except:
+        except mysql.connector.Error as Key_Error:
+            st.warning(f"Your Entered channel ID Data Already Exists : {channel_id}")
+            sys.exit(1)
+            
+            
+        cursor.close()
+        mydb.close()
 
-            Exists_channel_id= f"your given channel name {channel_id} is already Exists"
-              
+        return  
+         
+# function to call all extracted playlist data insert to my sql database
 
-            return Exists_channel_id
+def playlist_table(play_inf):
 
+    try:
+        # Connect to MySQL
+        mydb = mysql.connector.connect(
+            host="127.0.0.1",
+            user="root",
+            password="Dhinesh@2454",
+            database="YoutubeDataBase",
+            auth_plugin="mysql_native_password"
+        )
 
-def playlist_table():
-    #Connect to MYSQL
-    mydb=mysql.connector.connect(host="127.0.0.1",
-                                user="root",
-                                password="Dhinesh@2454",
-                                database="YoutubeDataBase",
-                                auth_plugin="mysql_native_password")
+        cursor = mydb.cursor()
+        
+        # Function to create the table
+        create_table2 = """
+        CREATE TABLE IF NOT EXISTS playlists (
+            playlist_Id VARCHAR(255) PRIMARY KEY,
+            channel_Id VARCHAR(255),
+            Title VARCHAR(255),
+            channel_Name VARCHAR(255),
+            PublishedAt TIMESTAMP,
+            video_count INT
+        );
+        """
 
-    cursor=mydb.cursor()
-    
-    # function of table create query
-    create_query = """CREATE TABLE IF NOT EXISTS playlists (
-        playlist_Id VARCHAR(255) PRIMARY KEY,
-        channel_Id VARCHAR(255),
-        Title VARCHAR(255),
-        channel_Name VARCHAR(255),
-        PublishedAt TIMESTAMP,
-        video_count INT);"""
+        cursor.execute(create_table2)
+        mydb.commit()
 
-    cursor.execute(create_query)
+        # Function to convert datetime string to MySQL-compatible format
+        def convert_to_mysql_datetime(datetime_str):
+            datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
+            mysql_datetime = datetime.strftime(datetime_obj, "%Y-%m-%d %H:%M:%S")
+            return mysql_datetime
+        
+        #playlist details is coverted into DataFram
+        df1=pd.DataFrame(play_inf)
 
-    mydb.commit()
-
-    #Function  convert to datetime string to mysql-comfortible formate 
-
-    def convert_to_mysql_datetime(datetime_str):
-        datetime_obj=datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
-        mysql_datetime=datetime.strftime(datetime_obj,"%Y-%m-%d %H:%M:%S")
-
-        return mysql_datetime
-
-    #insert data into playlist table
-    values=[]
-    for index ,row in df1.iterrows():
-        insert_query=("""INSERT INTO playlists( playlist_Id,
-                                            channel_Id,
-                                            Title ,
-                                            channel_Name,
-                                            PublishedAt,
-                                            video_count) 
-                                            VALUES (%s ,%s ,%s ,%s ,%s ,%s) 
-                                            ON DUPLICATE KEY UPDATE
-                                            playlist_Id=VALUES(playlist_Id) ;""")
-        row_values=(
+        # Insert data into playlist table
+        play_values = []
+        for index, row in df1.iterrows():
+            insert_query2 = ("""
+                INSERT INTO playlists (
+                    playlist_Id,
+                    channel_Id,
+                    Title,
+                    channel_Name,
+                    PublishedAt,
+                    video_count
+                ) VALUES (%s, %s, %s, %s, %s, %s) 
+                ON DUPLICATE KEY UPDATE playlist_Id=VALUES(playlist_Id);
+            """)
+            row_values2 = (
                 row["playlist_Id"],
                 row["channel_Id"],
                 row["Title"],
                 row["channel_Name"],
                 convert_to_mysql_datetime(row["PublishedAt"]),
                 row["video_count"]
-                )
-        values.append(row_values)
-        
-    try:
-        cursor.executemany(insert_query, values)
-        mydb.commit()
+            )
+            play_values.append(row_values2)  # Fixed the issue here
+
+    
+            cursor.executemany(insert_query2, play_values)
+            mydb.commit()
+            cursor.close()
+            mydb.close()
     except mysql.connector.Error as err:
         print("Error:", err)
 
-    return "channel table created succesfully"
-
+    return print("Playlist data inserted successfully.")
 
 
 # function to call all extracted videos data insert to my sql database
-def videos_table():
+def videos_table(vid_inf):
     #Connect to MYSQL
     mydb=mysql.connector.connect(host="127.0.0.1",
                                 user="root",
@@ -356,7 +318,7 @@ def videos_table():
     cursor=mydb.cursor()
 
     #function of table create query
-    create_query = """CREATE TABLE IF NOT EXISTS videos (
+    create_table3 = """CREATE TABLE IF NOT EXISTS videos (
         channel_name VARCHAR(255),
         Video_Id VARCHAR(255) PRIMARY KEY,
         channel_id VARCHAR(255),
@@ -373,7 +335,7 @@ def videos_table():
         Definition VARCHAR(250),
         Caption_status VARCHAR(250)
     );"""
-    cursor.execute(create_query)
+    cursor.execute(create_table3)
     mydb.commit()
     def convert_to_mysql_datetime(datetime_str):
             datetime_obj=datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
@@ -400,10 +362,12 @@ def videos_table():
         formatted_duration="{:02d}:{:02d}:{:02d}".format(seconds // 3600,seconds % 3600 // 60,seconds % 60)
         return formatted_duration
         
+    
+    df2=pd.DataFrame(vid_inf)
 
-    values=[]
+    vide_values=[]
     for index,row in df2.iterrows():
-        insert_query = """INSERT INTO videos (
+        insert_query3 = """INSERT INTO videos (
                                             channel_name,
                                             Video_Id,
                                             channel_id,
@@ -423,94 +387,117 @@ def videos_table():
                                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
                                             ON DUPLICATE KEY UPDATE
                                             Video_Id = VALUES(Video_Id);"""
-        row_values=(row["channel_name"],row["Video_Id"],row["channel_id"],
+        row_values3=(row["channel_name"],row["Video_Id"],row["channel_id"],
                     row["Title"],row["Description"],
                     row["Thumbnail"],list_to_string(row["Tags"]),convert_to_mysql_datetime(row["Published_date"]),
                     convert_duration_to_mysql(row["Duration"]),row["Views"],row["Likes"],
                     row["Comments"],row["Favorite_Count"],
                     row["Definition"],row["Caption_status"]
                     )
-        values.append(row_values)
+        vide_values.append(row_values3)
     try:
-        cursor.executemany(insert_query, values)
+        cursor.executemany(insert_query3, vide_values)
         mydb.commit()
     except mysql.connector.Error as err:
         print("Error:", err)
 
-    return "video table created succesfully"
+    cursor.close()
+    mydb.close()
 
+    return print("video data inserted successfully.")
 
+# function to call all extracted comments data insert to my sql database
+def comments_table(comm_info):
+    try:
+        # Connect to MySQL
+        mydb = mysql.connector.connect(
+            host="127.0.0.1",
+            user="root",
+            password="Dhinesh@2454",
+            database="YoutubeDataBase",
+            auth_plugin="mysql_native_password"
+        )
 
-def comments_table():
-        #Connect to MYSQL
-        mydb=mysql.connector.connect(host="127.0.0.1",
-                                user="root",
-                                password="Dhinesh@2454",
-                                database="YoutubeDataBase",
-                                auth_plugin="mysql_native_password")
+        cursor = mydb.cursor()
 
-        cursor=mydb.cursor()
-       
-        # function of table create query
-        create_query = """CREATE TABLE IF NOT EXISTS comments (
-        comment_id VARCHAR(255) ,
-        Video_Id VARCHAR(255),
-        comment_Text TEXT,
-        comment_author VARCHAR(255),
-        comment_PublishedAt TIMESTAMP
-
-        );"""
-        cursor.execute(create_query)
+        # Create table if not exists
+        create_table4 = """
+        CREATE TABLE IF NOT EXISTS comments (
+            comment_id VARCHAR(255) PRIMARY KEY,
+            Video_Id VARCHAR(255),
+            comment_Text TEXT,
+            comment_author VARCHAR(255),
+            comment_PublishedAt TIMESTAMP
+        );
+        """
+        cursor.execute(create_table4)
         mydb.commit()
+
+        # Function to convert datetime string to MySQL format
         def convert_to_mysql_datetime(datetime_str):
-                datetime_obj=datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
-                mysql_datetime=datetime.strftime(datetime_obj,"%Y-%m-%d %H:%M:%S")
+            datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
+            mysql_datetime = datetime.strftime(datetime_obj, "%Y-%m-%d %H:%M:%S")
+            return mysql_datetime
+        
+        #Comment data is converted into dataframe
+        df3=pd.DataFrame(comm_info)
 
-                return mysql_datetime
-
-        values=[]
-        for index,row in df3.iterrows():
-                insert_query="""INSERT INTO comments ( 
-                                                comment_id,
-                                                Video_Id ,
-                                                comment_Text,
-                                                comment_author,
-                                                comment_PublishedAt)
-                                                
-                                                VALUES (%s, %s, %s, %s, %s)
-                                                ON DUPLICATE KEY UPDATE
-                                                comment_Text = VALUES(comment_Text),
-                                                comment_author = VALUES(comment_author),
-                                                comment_PublishedAt = VALUES(comment_PublishedAt);"""
-                row_values=(row["comment_id"],
+        com_values = []
+        for index, row in df3.iterrows():
+            insert_query4 = """
+            INSERT INTO comments (
+                comment_id,
+                Video_Id,
+                comment_Text,
+                comment_author,
+                comment_PublishedAt
+            ) VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                comment_Text = VALUES(comment_Text),
+                comment_author = VALUES(comment_author),
+                comment_PublishedAt = VALUES(comment_PublishedAt);
+            """
+            row_values4 = (
+                row["comment_id"],
                 row["Video_Id"],
                 row["comment_Text"],
                 row["comment_author"],
-                convert_to_mysql_datetime(row["comment_PublishedAt"]))
+                convert_to_mysql_datetime(row["comment_PublishedAt"])
+            )
 
-                values.append(row_values)
+            com_values.append(row_values4)
 
-        try:
-                cursor.executemany(insert_query, values)
-                mydb.commit()
-        except mysql.connector.Error as err:
-                print("Error:", err)
+        cursor.executemany(insert_query4, com_values)
+        mydb.commit()
+        cursor.close()
+        mydb.close()
 
-        return "video table created succesfully"
+        return "Comments data inserted successfully."
+    
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return "Failed to insert comments data."
 
+def tables(channel_id):
+    
+    #Get data for each table
+    cha_det=get_channel_details(channel_id)
+    play_inf=get_Playlist_info(channel_id)
+    vi_id=get_video_id(channel_id)
+    comm_info=get_comment_info( vi_id)
+    vid_inf=get_video_info(vi_id)
+    
+    #Create Each table
+    channel_table(cha_det)
+    playlist_table(play_inf)
+    videos_table(vid_inf)
+    comments_table(comm_info)
 
-
-def tables():
-    Exists_channel_id=channel_table(df)
-    if Exists_channel_id:
-          return Exists_channel_id
-    else:
-        playlist_table()
-        videos_table()
-        comments_table()
-    return print("Tables created successfully")
+    st.success("Datas are Collected successfully")
+    
+    return print("Data inserted successfully.")
 if channel_id:
-    All_Tables=tables()
+    All_Tables=tables(channel_id)
 
 #Connect to MYSQL
 mydb=mysql.connector.connect(host="127.0.0.1",
@@ -533,7 +520,7 @@ question=st.selectbox("Select a Query",(
                                         "8.What are the names of all the channels that have published videos in the year2022?",
                                         "9.What is the average duration of all videos in each channel, and what are their corresponding channel names?",
                                         "10.Which videos have the highest number of comments, and what are their corresponding channel names?",
-                                        "11.Retrieve all stored channel information from the database"
+                                        "11.Retrieve Existing Data Fetch data from the database to compare with new data."
                                         ))
 
 # SQL Query Output - 1
@@ -654,7 +641,7 @@ elif    question=="10.Which videos have the highest number of comments, and what
         st.write(convert_df10)
 
 # SQL Query Output-10
-elif question == "11.Retrieve all stored channel information from the database":
+elif question == "11.Retrieve Existing Data Fetch data from the database to compare with new data.":
     question11 = """SELECT channel_name as channelname, subscriber as subscr, views as view, Total_video as totalvideo 
                     FROM channels
                     ORDER BY view DESC """   
@@ -673,10 +660,10 @@ elif question == "11.Retrieve all stored channel information from the database":
     ax.bar(xpos + 0.6, convert_df11['Total videos'], width=bar_width, label='Total Videos', align='center')
     # Setting labels and title
     ax.set_xlabel('Channel Name')
-    ax.set_ylabel('Counts')
+    ax.set_ylabel('View Counts')
     ax.set_title('Channels Information')
     ax.set_xticks([r + bar_width for r in range(len(convert_df11))])
-    ax.set_xticklabels(convert_df11['channel name'], rotation=90)
+    ax.set_xticklabels(convert_df11['channel name'],rotation=90)
     ax.legend()
     plt.tight_layout()  # Adjust layout to prevent clipping of labels
     st.pyplot(fig)  # Display the plot in Streamlit
